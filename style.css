@@ -272,8 +272,8 @@ section > .container > p {
 
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
 }
 
 .gallery-item {
@@ -332,9 +332,11 @@ section > .container > p {
     margin-bottom: 1.5rem;
     font-size: 1.2rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Changed to row for icons */
+    align-items: center; /* Center icons vertically */
     border-bottom: 1px solid #eee;
     padding-bottom: 1rem;
+    gap: 15px; /* Space between icon and text */
 }
 
 .contact-info p:last-child {
@@ -342,12 +344,11 @@ section > .container > p {
     padding-bottom: 0;
 }
 
-.contact-info strong {
+.contact-info i {
     color: var(--primary-color);
-    margin-bottom: 0.3rem;
-    text-transform: uppercase;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
+    font-size: 1.5rem;
+    width: 30px;
+    text-align: center;
 }
 
 .contact-info a {
