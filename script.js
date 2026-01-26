@@ -1,13 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Lightbox Logic
+    // 1. Render Gallery if data exists
+    if (typeof galleryData !== 'undefined' && galleryData.length > 0) {
+        renderGallery(galleryData);
+    }
+
+    // 2. Lightbox Logic
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const captionText = document.getElementById('caption');
     const closeBtn = document.getElementsByClassName('close')[0];
 
-    // Get all gallery items and convert to array for index access
-    const galleryImages = Array.from(document.querySelectorAll('.gallery-item img'));
+    // Note: We need to re-select images after rendering
+    let galleryImages = [];
     let currentIndex = 0;
+
+    function initLightbox() {
+        // Select all 'After' images (the visible ones in the grid)
+        // Adjust logic if we want to show both before and after in lightbox
+        // For now, let's just show the images that are displayed in the grid (project covers)
+        // Actually, if a project has multiple images, this simple grid click won't show them.
+        // But per the request, the user organizes by folder.
+        // Let's assume the grid shows the 'cover' (after). Clicking it opens lightbox.
+
+        // Strategy: Create a flat list of images for the lightbox.
+        // For simple navigation, we'll just use the images rendered in the DOM.
+        galleryImages = Array.from(document.querySelectorAll('.project-card .img-after'));
+
+        galleryImages.forEach((img, index) => {
+            // Find parent card to add click listener
+            const card = img.closest('.project-card');
+            card.addEventListener('click', () => {
+                openLightbox(index);
+            });
+        });
+    }
 
     // Open lightbox function
     function openLightbox(index) {
@@ -15,16 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const img = galleryImages[currentIndex];
         lightbox.style.display = 'block';
         lightboxImg.src = img.src;
-        captionText.innerHTML = img.alt;
+        // Use alt text or project title
+        captionText.innerHTML = img.alt || "Project Image";
         document.body.style.overflow = 'hidden'; // Disable scroll
     }
-
-    // Attach click events to images
-    galleryImages.forEach((img, index) => {
-        img.addEventListener('click', () => {
-            openLightbox(index);
-        });
-    });
 
     // Close functionality
     closeBtn.addEventListener('click', () => {
@@ -65,7 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openLightbox(newIndex);
     };
 
-    // Hero Carousel Logic
+    // Initialize Lightbox listeners
+    initLightbox();
+
+    // 3. Hero Carousel Logic
     const slides = document.querySelectorAll('.hero-slide');
     if (slides.length > 0) {
         let currentSlide = 0;
@@ -79,10 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setInterval(nextSlide, slideInterval);
     }
-});
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Contact Form Toggle
+    // 4. Contact Form Toggle
     const toggleBtn = document.getElementById('toggle-form-btn');
     const contactForm = document.getElementById('contact-form');
 
@@ -93,3 +114,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function renderGallery(projects) {
+    const container = document.getElementById('gallery-container');
+    if (!container) return;
+
+    container.innerHTML = ''; // Clear loading state
+
+    projects.forEach(project => {
+        if (!project.afterImages || project.afterImages.length === 0) return;
+
+        const coverAfter = project.afterImages[0];
+        const coverBefore = project.hasBefore && project.beforeImages.length > 0 ? project.beforeImages[0] : null;
+
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        if (coverBefore) card.classList.add('has-before');
+
+        // After Image (Default Visible)
+        const imgAfter = document.createElement('img');
+        imgAfter.src = coverAfter;
+        imgAfter.alt = project.title + " (After)";
+        imgAfter.className = 'img-after';
+        imgAfter.loading = 'lazy';
+        card.appendChild(imgAfter);
+
+        // Before Image (Hover)
+        if (coverBefore) {
+            const imgBefore = document.createElement('img');
+            imgBefore.src = coverBefore;
+            imgBefore.alt = project.title + " (Before)";
+            imgBefore.className = 'img-before';
+            imgBefore.loading = 'lazy';
+            card.appendChild(imgBefore);
+        }
+
+        // Title/Badge
+        const badge = document.createElement('div');
+        badge.className = 'project-badge';
+        badge.innerText = project.title;
+        card.appendChild(badge);
+
+        container.appendChild(card);
+    });
+}
