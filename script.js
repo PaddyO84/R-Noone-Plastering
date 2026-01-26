@@ -80,3 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(nextSlide, slideInterval);
     }
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Contact Form Toggle
+    const toggleBtn = document.getElementById('toggle-form-btn');
+    const contactForm = document.getElementById('contact-form');
+
+    if (toggleBtn && contactForm) {
+        toggleBtn.addEventListener('click', () => {
+            contactForm.classList.remove('hidden');
+            toggleBtn.style.display = 'none';
+        });
+    }
+});
