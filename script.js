@@ -15,24 +15,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIndex = 0;
 
     function initLightbox() {
-        // Select all 'After' images (the visible ones in the grid)
-        // Adjust logic if we want to show both before and after in lightbox
-        // For now, let's just show the images that are displayed in the grid (project covers)
-        // Actually, if a project has multiple images, this simple grid click won't show them.
-        // But per the request, the user organizes by folder.
-        // Let's assume the grid shows the 'cover' (after). Clicking it opens lightbox.
-
         // Strategy: Create a flat list of images for the lightbox.
         // For simple navigation, we'll just use the images rendered in the DOM.
         galleryImages = Array.from(document.querySelectorAll('.project-card .img-after'));
 
-        galleryImages.forEach((img, index) => {
-            // Find parent card to add click listener
-            const card = img.closest('.project-card');
-            card.addEventListener('click', () => {
-                openLightbox(index);
+        const galleryContainer = document.getElementById('gallery-container');
+        if (galleryContainer) {
+            galleryContainer.addEventListener('click', (e) => {
+                const card = e.target.closest('.project-card');
+                if (card) {
+                    const img = card.querySelector('.img-after');
+                    const index = galleryImages.indexOf(img);
+                    if (index !== -1) {
+                        openLightbox(index);
+                    }
+                }
             });
-        });
+        }
     }
 
     // Open lightbox function
@@ -42,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lightbox.style.display = 'block';
         lightboxImg.src = img.src;
         // Use alt text or project title
-        captionText.innerHTML = img.alt || "Project Image";
+        captionText.textContent = img.alt || "Project Image";
         document.body.style.overflow = 'hidden'; // Disable scroll
     }
 
@@ -74,8 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Make changeSlide globally available
-    window.changeSlide = function(n) {
+    function changeSlide(n) {
         let newIndex = currentIndex + n;
         if (newIndex >= galleryImages.length) {
             newIndex = 0;
@@ -83,7 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
             newIndex = galleryImages.length - 1;
         }
         openLightbox(newIndex);
-    };
+    }
+
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => changeSlide(-1));
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => changeSlide(1));
+    }
 
     // Initialize Lightbox listeners
     initLightbox();
