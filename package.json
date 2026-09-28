@@ -1,0 +1,24 @@
+{
+  "name": "r-noone-plastering",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gallery_data.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaddyO84/R-Noone-Plastering.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PaddyO84/R-Noone-Plastering/issues"
+  },
+  "homepage": "https://github.com/PaddyO84/R-Noone-Plastering#readme",
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2"
+  }
+}

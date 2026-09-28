@@ -1,0 +1,34 @@
+backend:
+  name: github
+  repo: PaddyO84/R-Noone-Plastering
+  branch: main
+  # Note: If using a custom OAuth gateway, specify base_url: https://your-oauth-proxy.example.com
+
+media_folder: "images/projects"
+public_folder: "/images/projects"
+
+# Display settings
+site_url: "https://rnooneplastering.ie"
+display_url: "https://rnooneplastering.ie"
+logo_url: "https://rnooneplastering.ie/images/poster.jpg"
+
+collections:
+  - name: "projects"
+    label: "Projects & Gallery"
+    label_singular: "Project"
+    folder: "content/projects"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { label: "Project Title", name: "title", widget: "string", hint: "e.g. Living Room Skimming, Kitchen Renovation" }
+      - label: "After Images (Finished Work)"
+        name: "afterImages"
+        widget: "list"
+        summary: "{{fields.image}}"
+        field: { label: "Photo", name: "image", widget: "image", media_folder: "/images/projects/{{slug}}/after", public_folder: "/images/projects/{{slug}}/after" }
+      - label: "Before Images (Optional)"
+        name: "beforeImages"
+        widget: "list"
+        required: false
+        summary: "{{fields.image}}"
+        field: { label: "Photo", name: "image", widget: "image", media_folder: "/images/projects/{{slug}}/before", public_folder: "/images/projects/{{slug}}/before" }
