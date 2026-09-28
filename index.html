@@ -77,9 +77,22 @@
     <section id="gallery">
         <div class="container">
             <h2>Our Work</h2>
-            <p>A selection of our recent projects.</p>
+            <p>A selection of our recent plastering, skimming, and renovation projects across Donegal, Derry, and Strabane.</p>
+            
+            <div class="gallery-filters" id="gallery-filters">
+                <button class="filter-btn active" data-filter="all">All Photos</button>
+                <button class="filter-btn" data-filter="before-after">Before &amp; After</button>
+                <button class="filter-btn" data-filter="general">General Work</button>
+            </div>
+
             <div id="gallery-container" class="gallery-grid">
                 <!-- Gallery items will be loaded dynamically -->
+            </div>
+
+            <div class="gallery-actions" id="gallery-actions">
+                <button id="load-more-btn" class="btn gallery-load-more-btn">
+                    <i class="fas fa-images"></i> View More Photos (<span id="remaining-count">0</span>)
+                </button>
             </div>
         </div>
     </section>
@@ -184,6 +197,7 @@
         <span class="close">&times;</span>
         <img class="lightbox-content" id="lightbox-img">
         <div id="caption"></div>
+        <div id="lightbox-counter" class="lightbox-counter"></div>
         <a class="prev" id="prev-btn">&#10094;</a>
         <a class="next" id="next-btn">&#10095;</a>
     </div>
