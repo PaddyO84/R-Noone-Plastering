@@ -2,7 +2,7 @@ backend:
   name: github
   repo: PaddyO84/R-Noone-Plastering
   branch: main
-  # Note: If using a custom OAuth gateway, specify base_url: https://your-oauth-proxy.example.com
+  auth_type: implicit
 
 media_folder: "images/projects"
 public_folder: "/images/projects"
