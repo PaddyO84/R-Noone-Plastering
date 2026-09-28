@@ -1,0 +1,43 @@
+name: Rebuild Gallery Data and Deploy
+
+on:
+  push:
+    paths:
+      - 'images/projects/**'
+      - 'tools/generate_gallery_data.py'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Regenerate gallery_data.js
+        run: |
+          python tools/generate_gallery_data.py
+
+      - name: Commit and push changes if updated
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add gallery_data.js
+          if git diff --staged --quiet; then
+            echo "No changes to gallery_data.js"
+          else
+            git commit -m "Auto-update gallery_data.js after photo upload [skip ci]"
+            git push
+          fi
