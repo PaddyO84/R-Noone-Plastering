@@ -259,12 +259,6 @@ function initModernGallery(projects) {
                 card.appendChild(toggleBar);
             }
 
-            // Title Badge
-            const badge = document.createElement('div');
-            badge.className = 'project-badge';
-            badge.innerText = item.title;
-            card.appendChild(badge);
-
             container.appendChild(card);
         });
 
