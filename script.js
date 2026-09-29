@@ -166,36 +166,40 @@ function initModernGallery(projects) {
     const container = document.getElementById('gallery-container');
     const loadMoreBtn = document.getElementById('load-more-btn');
     const remainingCountSpan = document.getElementById('remaining-count');
-    const filterButtons = document.querySelectorAll('.filter-btn');
+    const filterContainer = document.getElementById('gallery-filters');
     if (!container) return;
 
-    // Flatten items so every photo is represented cleanly
+    // Flatten items so every photo is represented cleanly and categorize them
     let flattenedItems = [];
+    const categoriesFound = new Set();
 
     projects.forEach(project => {
+        const categoryId = project.id;
+        const categoryTitle = project.title;
+
         // If it's a specific project with before/after
         if (project.hasBefore && project.beforeImages && project.beforeImages.length > 0) {
+            categoriesFound.add(JSON.stringify({ id: categoryId, title: categoryTitle }));
             flattenedItems.push({
-                type: 'before-after',
-                title: project.title,
+                type: categoryId,
+                title: categoryTitle,
                 beforeImg: project.beforeImages[0],
                 afterImg: project.afterImages[0],
                 hasBefore: true
             });
-            // Any additional after images for this project
             for (let i = 1; i < project.afterImages.length; i++) {
                 flattenedItems.push({
-                    type: 'general',
-                    title: `${project.title} (Detail ${i + 1})`,
+                    type: categoryId,
+                    title: `${categoryTitle} (Detail ${i + 1})`,
                     afterImg: project.afterImages[i],
                     hasBefore: false
                 });
             }
         } else if (project.afterImages && project.afterImages.length > 0) {
-            // General or multi-photo project
+            categoriesFound.add(JSON.stringify({ id: categoryId, title: categoryTitle }));
             project.afterImages.forEach((imgUrl, idx) => {
                 flattenedItems.push({
-                    type: project.id === 'general_work' ? 'general' : 'project',
+                    type: categoryId,
                     title: project.id === 'general_work' ? `Plastering Work ${idx + 1}` : project.title,
                     afterImg: imgUrl,
                     hasBefore: false
@@ -204,15 +208,41 @@ function initModernGallery(projects) {
         }
     });
 
+    const parsedCategories = Array.from(categoriesFound).map(s => JSON.parse(s));
+
+    // Dynamic Filter Generation:
+    // If only 1 category/project exists, do not display filter buttons at all!
+    if (filterContainer) {
+        filterContainer.innerHTML = '';
+        if (parsedCategories.length > 1) {
+            filterContainer.style.display = 'flex';
+
+            // "All Photos" button
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-btn active';
+            allBtn.setAttribute('data-filter', 'all');
+            allBtn.textContent = 'All Photos';
+            filterContainer.appendChild(allBtn);
+
+            parsedCategories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.setAttribute('data-filter', cat.id);
+                btn.textContent = cat.title;
+                filterContainer.appendChild(btn);
+            });
+        } else {
+            filterContainer.style.display = 'none';
+        }
+    }
+
     let currentFilter = 'all';
     let visibleCount = 12;
     const batchSize = 12;
 
     function getFilteredItems() {
         if (currentFilter === 'all') return flattenedItems;
-        if (currentFilter === 'before-after') return flattenedItems.filter(item => item.hasBefore);
-        if (currentFilter === 'general') return flattenedItems.filter(item => !item.hasBefore);
-        return flattenedItems;
+        return flattenedItems.filter(item => item.type === currentFilter);
     }
 
     function renderItems() {
@@ -274,16 +304,19 @@ function initModernGallery(projects) {
         }
     }
 
-    // Filter Button Clicks
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilter = btn.getAttribute('data-filter');
-            visibleCount = 12; // Reset pagination for filter
-            renderItems();
+    // Attach listener to filterContainer using event delegation
+    if (filterContainer) {
+        filterContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-btn');
+            if (btn) {
+                filterContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.getAttribute('data-filter');
+                visibleCount = 12;
+                renderItems();
+            }
         });
-    });
+    }
 
     // Load More Click
     if (loadMoreBtn) {
