@@ -1,10 +1,10 @@
 import os
 import json
 
-def generate_gallery_data():
-    projects_dir = "images/projects"
-    output_file = "gallery_data.js"
+DEFAULT_PROJECTS_DIR = "images/projects"
+DEFAULT_OUTPUT_FILE = "gallery_data.js"
 
+def generate_gallery_data(projects_dir=DEFAULT_PROJECTS_DIR, output_file=DEFAULT_OUTPUT_FILE):
     projects = []
 
     if not os.path.exists(projects_dir):

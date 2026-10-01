@@ -171,7 +171,7 @@ function initModernGallery(projects) {
 
     // Flatten items so every photo is represented cleanly and categorize them
     let flattenedItems = [];
-    const categoriesFound = new Set();
+    const categoriesMap = new Map();
 
     projects.forEach(project => {
         const categoryId = project.id;
@@ -179,7 +179,7 @@ function initModernGallery(projects) {
 
         // If it's a specific project with before/after
         if (project.hasBefore && project.beforeImages && project.beforeImages.length > 0) {
-            categoriesFound.add(JSON.stringify({ id: categoryId, title: categoryTitle }));
+            categoriesMap.set(categoryId, { id: categoryId, title: categoryTitle });
             flattenedItems.push({
                 type: categoryId,
                 title: categoryTitle,
@@ -196,7 +196,7 @@ function initModernGallery(projects) {
                 });
             }
         } else if (project.afterImages && project.afterImages.length > 0) {
-            categoriesFound.add(JSON.stringify({ id: categoryId, title: categoryTitle }));
+            categoriesMap.set(categoryId, { id: categoryId, title: categoryTitle });
             project.afterImages.forEach((imgUrl, idx) => {
                 flattenedItems.push({
                     type: categoryId,
@@ -208,7 +208,7 @@ function initModernGallery(projects) {
         }
     });
 
-    const parsedCategories = Array.from(categoriesFound).map(s => JSON.parse(s));
+    const parsedCategories = Array.from(categoriesMap.values());
 
     // Dynamic Filter Generation:
     // If only 1 category/project exists, do not display filter buttons at all!
@@ -257,6 +257,8 @@ function initModernGallery(projects) {
             return;
         }
 
+        const fragment = document.createDocumentFragment();
+
         toShow.forEach((item, index) => {
             const card = document.createElement('div');
             card.className = 'project-card';
@@ -289,8 +291,10 @@ function initModernGallery(projects) {
                 card.appendChild(toggleBar);
             }
 
-            container.appendChild(card);
+            fragment.appendChild(card);
         });
+
+        container.appendChild(fragment);
 
         // Update Load More button state
         const remaining = filtered.length - visibleCount;
@@ -309,7 +313,8 @@ function initModernGallery(projects) {
         filterContainer.addEventListener('click', (e) => {
             const btn = e.target.closest('.filter-btn');
             if (btn) {
-                filterContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                const currentActive = filterContainer.querySelector('.filter-btn.active');
+                if (currentActive) currentActive.classList.remove('active');
                 btn.classList.add('active');
                 currentFilter = btn.getAttribute('data-filter');
                 visibleCount = 12;
@@ -327,4 +332,11 @@ function initModernGallery(projects) {
     }
 
     renderItems();
+}
+
+// Export for Jest testing if running in Node environment
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        initModernGallery
+    };
 }
