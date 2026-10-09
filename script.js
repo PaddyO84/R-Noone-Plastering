@@ -89,21 +89,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (state === 'before') {
                             imgBefore.style.opacity = '1';
                             imgAfter.style.opacity = '0';
-                            card.querySelectorAll('.ba-toggle-btn').forEach(b => b.classList.remove('active'));
-                            toggleBtn.classList.add('active');
                         } else {
                             imgBefore.style.opacity = '0';
                             imgAfter.style.opacity = '1';
-                            card.querySelectorAll('.ba-toggle-btn').forEach(b => b.classList.remove('active'));
-                            toggleBtn.classList.add('active');
                         }
+                        const toggleBar = toggleBtn.parentElement;
+                        if (toggleBar) {
+                            for (const btn of toggleBar.children) {
+                                btn.classList.remove('active');
+                            }
+                        }
+                        toggleBtn.classList.add('active');
                     }
                     return;
                 }
 
-                refreshLightboxItems();
                 const activeImg = card.querySelector('.img-after') || card.querySelector('img');
-                const index = galleryImages.indexOf(activeImg);
+                let index = galleryImages.indexOf(activeImg);
+                if (index === -1) {
+                    refreshLightboxItems();
+                    index = galleryImages.indexOf(activeImg);
+                }
                 if (index !== -1) {
                     openLightbox(index);
                 }
@@ -134,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Render Gallery if dynamic data exists
     if (typeof galleryData !== 'undefined' && galleryData.length > 0) {
-        initModernGallery(galleryData);
+        initModernGallery(galleryData, { onRender: refreshLightboxItems });
     }
 
     // 3. Hero Carousel Logic
@@ -162,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Modern Gallery Grid, Filtering, and Pagination
-function initModernGallery(projects) {
+function initModernGallery(projects, options = {}) {
     const container = document.getElementById('gallery-container');
     const loadMoreBtn = document.getElementById('load-more-btn');
     const remainingCountSpan = document.getElementById('remaining-count');
@@ -239,21 +245,17 @@ function initModernGallery(projects) {
     let currentFilter = 'all';
     let visibleCount = 12;
     const batchSize = 12;
-
-    function getFilteredItems() {
-        if (currentFilter === 'all') return flattenedItems;
-        return flattenedItems.filter(item => item.type === currentFilter);
-    }
+    let cachedFilteredItems = flattenedItems;
 
     function renderItems() {
-        const filtered = getFilteredItems();
-        const toShow = filtered.slice(0, visibleCount);
+        const toShow = cachedFilteredItems.slice(0, visibleCount);
 
         container.innerHTML = '';
 
         if (toShow.length === 0) {
             container.innerHTML = '<p class="no-photos-msg">No photos found in this category.</p>';
             if (loadMoreBtn) loadMoreBtn.parentElement.style.display = 'none';
+            if (options.onRender) options.onRender();
             return;
         }
 
@@ -297,7 +299,7 @@ function initModernGallery(projects) {
         container.appendChild(fragment);
 
         // Update Load More button state
-        const remaining = filtered.length - visibleCount;
+        const remaining = cachedFilteredItems.length - visibleCount;
         if (loadMoreBtn) {
             if (remaining > 0) {
                 loadMoreBtn.parentElement.style.display = 'block';
@@ -305,6 +307,10 @@ function initModernGallery(projects) {
             } else {
                 loadMoreBtn.parentElement.style.display = 'none';
             }
+        }
+
+        if (options.onRender) {
+            options.onRender();
         }
     }
 
@@ -317,6 +323,9 @@ function initModernGallery(projects) {
                 if (currentActive) currentActive.classList.remove('active');
                 btn.classList.add('active');
                 currentFilter = btn.getAttribute('data-filter');
+                cachedFilteredItems = currentFilter === 'all'
+                    ? flattenedItems
+                    : flattenedItems.filter(item => item.type === currentFilter);
                 visibleCount = 12;
                 renderItems();
             }

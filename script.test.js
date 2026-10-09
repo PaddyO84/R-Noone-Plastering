@@ -119,6 +119,75 @@ describe('Gallery Lightbox Logic', () => {
             expect(lightbox.style.display).toBe('none');
         }
     });
+
+    test('Keyboard navigation handles ArrowRight, ArrowLeft, and Escape', () => {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const cards = document.querySelectorAll('.project-card');
+
+        // Open lightbox at first image
+        const img = cards[0].querySelector('.img-after');
+        const clickEvent = document.createEvent('HTMLEvents');
+        clickEvent.initEvent('click', true, false);
+        img.dispatchEvent(clickEvent);
+        expect(lightbox.style.display).toBe('block');
+        expect(lightboxImg.src).toContain('img1.jpg');
+
+        // Press ArrowRight -> Next slide
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+        expect(lightboxImg.src).toContain('img2.jpg');
+
+        // Press ArrowLeft -> Prev slide
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+        expect(lightboxImg.src).toContain('img1.jpg');
+
+        // Press Escape -> Close lightbox
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(lightbox.style.display).toBe('none');
+        expect(document.body.style.overflow).toBe('auto');
+    });
+
+    test('Touch swipe navigation supports swipe left and swipe right', () => {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const cards = document.querySelectorAll('.project-card');
+
+        // Open lightbox at first image
+        const img = cards[0].querySelector('.img-after');
+        const clickEvent = document.createEvent('HTMLEvents');
+        clickEvent.initEvent('click', true, false);
+        img.dispatchEvent(clickEvent);
+        expect(lightbox.style.display).toBe('block');
+        expect(lightboxImg.src).toContain('img1.jpg');
+
+        // Swipe left (start at 200, end at 100: diff > 50) -> next
+        const touchStartLeft = new Event('touchstart');
+        Object.defineProperty(touchStartLeft, 'changedTouches', {
+            value: [{ screenX: 200 }]
+        });
+        lightbox.dispatchEvent(touchStartLeft);
+
+        const touchEndLeft = new Event('touchend');
+        Object.defineProperty(touchEndLeft, 'changedTouches', {
+            value: [{ screenX: 100 }]
+        });
+        lightbox.dispatchEvent(touchEndLeft);
+        expect(lightboxImg.src).toContain('img2.jpg');
+
+        // Swipe right (start at 100, end at 200: diff > 50) -> prev
+        const touchStartRight = new Event('touchstart');
+        Object.defineProperty(touchStartRight, 'changedTouches', {
+            value: [{ screenX: 100 }]
+        });
+        lightbox.dispatchEvent(touchStartRight);
+
+        const touchEndRight = new Event('touchend');
+        Object.defineProperty(touchEndRight, 'changedTouches', {
+            value: [{ screenX: 200 }]
+        });
+        lightbox.dispatchEvent(touchEndRight);
+        expect(lightboxImg.src).toContain('img1.jpg');
+    });
 });
 
 describe('Hero Carousel Logic', () => {
@@ -235,5 +304,73 @@ describe('initModernGallery & Filter Logic', () => {
         // Click All Photos again
         filterBtns[0].click();
         expect(document.querySelectorAll('.project-card').length).toBe(3);
+    });
+
+    test('Load More button displays remaining count and renders next batch on click', () => {
+        // Create 15 mock project items
+        const manyProjects = [];
+        for (let i = 1; i <= 15; i++) {
+            manyProjects.push({
+                id: `proj_${i}`,
+                title: `Project ${i}`,
+                hasBefore: false,
+                afterImages: [`proj_${i}.jpg`]
+            });
+        }
+
+        initModernGallery(manyProjects);
+
+        const loadMoreContainer = document.querySelector('.load-more-container');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const remainingCountSpan = document.getElementById('remaining-count');
+
+        // Initial render shows 12 items, 3 remaining
+        expect(document.querySelectorAll('.project-card').length).toBe(12);
+        expect(loadMoreContainer.style.display).toBe('block');
+        expect(remainingCountSpan.textContent).toBe('3');
+
+        // Click Load More
+        loadMoreBtn.click();
+
+        // Now shows all 15 items, load more container hidden
+        expect(document.querySelectorAll('.project-card').length).toBe(15);
+        expect(loadMoreContainer.style.display).toBe('none');
+    });
+});
+
+describe('Contact Form Toggle', () => {
+    let scriptCode;
+
+    beforeAll(() => {
+        scriptCode = fs.readFileSync(path.resolve(__dirname, './script.js'), 'utf8');
+    });
+
+    beforeEach(() => {
+        document.body.innerHTML = `
+            <button id="toggle-form-btn">Contact Us</button>
+            <form id="contact-form" class="hidden"></form>
+        `;
+        eval(scriptCode);
+        const event = document.createEvent('Event');
+        event.initEvent('DOMContentLoaded', true, true);
+        document.dispatchEvent(event);
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+        jest.restoreAllMocks();
+    });
+
+    test('Clicking toggle button displays form and hides button', () => {
+        const toggleBtn = document.getElementById('toggle-form-btn');
+        const contactForm = document.getElementById('contact-form');
+
+        expect(contactForm.classList.contains('hidden')).toBe(true);
+        expect(toggleBtn.style.display).not.toBe('none');
+
+        toggleBtn.click();
+
+        expect(contactForm.classList.contains('hidden')).toBe(false);
+        expect(toggleBtn.style.display).toBe('none');
     });
 });
