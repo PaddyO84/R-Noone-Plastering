@@ -167,23 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Modern Gallery Grid, Filtering, and Pagination
-function initModernGallery(projects, options = {}) {
-    const container = document.getElementById('gallery-container');
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    const remainingCountSpan = document.getElementById('remaining-count');
-    const filterContainer = document.getElementById('gallery-filters');
-    if (!container) return;
-
-    // Flatten items so every photo is represented cleanly and categorize them
-    let flattenedItems = [];
+// Modern Gallery Helpers
+function transformProjectsToItems(projects) {
+    const flattenedItems = [];
     const categoriesMap = new Map();
 
     projects.forEach(project => {
         const categoryId = project.id;
         const categoryTitle = project.title;
 
-        // If it's a specific project with before/after
         if (project.hasBefore && project.beforeImages && project.beforeImages.length > 0) {
             categoriesMap.set(categoryId, { id: categoryId, title: categoryTitle });
             flattenedItems.push({
@@ -214,33 +206,80 @@ function initModernGallery(projects, options = {}) {
         }
     });
 
-    const parsedCategories = Array.from(categoriesMap.values());
+    return {
+        flattenedItems,
+        parsedCategories: Array.from(categoriesMap.values())
+    };
+}
 
-    // Dynamic Filter Generation:
-    // If only 1 category/project exists, do not display filter buttons at all!
-    if (filterContainer) {
-        filterContainer.innerHTML = '';
-        if (parsedCategories.length > 1) {
-            filterContainer.style.display = 'flex';
+function renderFilterButtons(filterContainer, parsedCategories) {
+    if (!filterContainer) return;
+    filterContainer.innerHTML = '';
 
-            // "All Photos" button
-            const allBtn = document.createElement('button');
-            allBtn.className = 'filter-btn active';
-            allBtn.setAttribute('data-filter', 'all');
-            allBtn.textContent = 'All Photos';
-            filterContainer.appendChild(allBtn);
+    if (parsedCategories.length > 1) {
+        filterContainer.style.display = 'flex';
 
-            parsedCategories.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn';
-                btn.setAttribute('data-filter', cat.id);
-                btn.textContent = cat.title;
-                filterContainer.appendChild(btn);
-            });
-        } else {
-            filterContainer.style.display = 'none';
-        }
+        const allBtn = document.createElement('button');
+        allBtn.className = 'filter-btn active';
+        allBtn.setAttribute('data-filter', 'all');
+        allBtn.textContent = 'All Photos';
+        filterContainer.appendChild(allBtn);
+
+        parsedCategories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.setAttribute('data-filter', cat.id);
+            btn.textContent = cat.title;
+            filterContainer.appendChild(btn);
+        });
+    } else {
+        filterContainer.style.display = 'none';
     }
+}
+
+function createProjectCard(item) {
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    if (item.hasBefore) card.classList.add('has-before');
+
+    const imgAfter = document.createElement('img');
+    imgAfter.src = item.afterImg;
+    imgAfter.alt = item.title;
+    imgAfter.className = 'img-after';
+    imgAfter.loading = 'lazy';
+    card.appendChild(imgAfter);
+
+    if (item.hasBefore) {
+        const imgBefore = document.createElement('img');
+        imgBefore.src = item.beforeImg;
+        imgBefore.alt = item.title + " (Before)";
+        imgBefore.className = 'img-before';
+        imgBefore.loading = 'lazy';
+        card.appendChild(imgBefore);
+
+        const toggleBar = document.createElement('div');
+        toggleBar.className = 'ba-toggle-bar';
+        toggleBar.innerHTML = `
+            <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
+            <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
+        `;
+        card.appendChild(toggleBar);
+    }
+
+    return card;
+}
+
+// Modern Gallery Grid, Filtering, and Pagination
+function initModernGallery(projects, options = {}) {
+    const container = document.getElementById('gallery-container');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const remainingCountSpan = document.getElementById('remaining-count');
+    const filterContainer = document.getElementById('gallery-filters');
+    if (!container) return;
+
+    const { flattenedItems, parsedCategories } = transformProjectsToItems(projects);
+
+    renderFilterButtons(filterContainer, parsedCategories);
 
     let currentFilter = 'all';
     let visibleCount = 12;
@@ -261,39 +300,8 @@ function initModernGallery(projects, options = {}) {
 
         const fragment = document.createDocumentFragment();
 
-        toShow.forEach((item, index) => {
-            const card = document.createElement('div');
-            card.className = 'project-card';
-            if (item.hasBefore) card.classList.add('has-before');
-
-            // After Image
-            const imgAfter = document.createElement('img');
-            imgAfter.src = item.afterImg;
-            imgAfter.alt = item.title;
-            imgAfter.className = 'img-after';
-            imgAfter.loading = 'lazy';
-            card.appendChild(imgAfter);
-
-            // Before Image if available
-            if (item.hasBefore) {
-                const imgBefore = document.createElement('img');
-                imgBefore.src = item.beforeImg;
-                imgBefore.alt = item.title + " (Before)";
-                imgBefore.className = 'img-before';
-                imgBefore.loading = 'lazy';
-                card.appendChild(imgBefore);
-
-                // Mobile/Touch Friendly Toggle Controls
-                const toggleBar = document.createElement('div');
-                toggleBar.className = 'ba-toggle-bar';
-                toggleBar.innerHTML = `
-                    <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
-                    <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
-                `;
-                card.appendChild(toggleBar);
-            }
-
-            fragment.appendChild(card);
+        toShow.forEach(item => {
+            fragment.appendChild(createProjectCard(item));
         });
 
         container.appendChild(fragment);

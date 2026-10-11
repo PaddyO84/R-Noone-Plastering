@@ -336,6 +336,50 @@ describe('initModernGallery & Filter Logic', () => {
         expect(document.querySelectorAll('.project-card').length).toBe(15);
         expect(loadMoreContainer.style.display).toBe('none');
     });
+
+    test('Before/After toggle button changes image opacity and active class', () => {
+        const mockProjects = [
+            {
+                id: 'living_room',
+                title: 'Living Room',
+                hasBefore: true,
+                beforeImages: ['before_lr.jpg'],
+                afterImages: ['after_lr.jpg']
+            }
+        ];
+
+        initModernGallery(mockProjects);
+
+        // Dispatch DOMContentLoaded event to ensure listeners in script.js are active
+        const event = document.createEvent('Event');
+        event.initEvent('DOMContentLoaded', true, true);
+        document.dispatchEvent(event);
+
+        const card = document.querySelector('.project-card.has-before');
+        const imgBefore = card.querySelector('.img-before');
+        const imgAfter = card.querySelector('.img-after');
+        const afterBtn = card.querySelector('.ba-toggle-btn[data-view="after"]');
+        const beforeBtn = card.querySelector('.ba-toggle-btn[data-view="before"]');
+
+        expect(afterBtn.classList.contains('active')).toBe(true);
+        expect(beforeBtn.classList.contains('active')).toBe(false);
+
+        // Click 'Before' button
+        beforeBtn.click();
+
+        expect(imgBefore.style.opacity).toBe('1');
+        expect(imgAfter.style.opacity).toBe('0');
+        expect(beforeBtn.classList.contains('active')).toBe(true);
+        expect(afterBtn.classList.contains('active')).toBe(false);
+
+        // Click 'After' button
+        afterBtn.click();
+
+        expect(imgBefore.style.opacity).toBe('0');
+        expect(imgAfter.style.opacity).toBe('1');
+        expect(afterBtn.classList.contains('active')).toBe(true);
+        expect(beforeBtn.classList.contains('active')).toBe(false);
+    });
 });
 
 describe('Contact Form Toggle', () => {
