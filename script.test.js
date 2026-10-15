@@ -188,6 +188,86 @@ describe('Gallery Lightbox Logic', () => {
         lightbox.dispatchEvent(touchEndRight);
         expect(lightboxImg.src).toContain('img1.jpg');
     });
+
+    test('Lightbox closes when close button or background overlay is clicked', () => {
+        const lightbox = document.getElementById('lightbox');
+        const closeBtn = document.querySelector('.close');
+        const cards = document.querySelectorAll('.project-card');
+
+        // Open lightbox
+        const img = cards[0].querySelector('.img-after');
+        const clickEvent = document.createEvent('HTMLEvents');
+        clickEvent.initEvent('click', true, false);
+        img.dispatchEvent(clickEvent);
+        expect(lightbox.style.display).toBe('block');
+        expect(document.body.style.overflow).toBe('hidden');
+
+        // Click close button
+        closeBtn.click();
+        expect(lightbox.style.display).toBe('none');
+        expect(document.body.style.overflow).toBe('auto');
+
+        // Re-open lightbox
+        img.dispatchEvent(clickEvent);
+        expect(lightbox.style.display).toBe('block');
+
+        // Click backdrop overlay (event.target === lightbox)
+        lightbox.click();
+        expect(lightbox.style.display).toBe('none');
+        expect(document.body.style.overflow).toBe('auto');
+    });
+
+    test('Lightbox caption falls back to "Project Image" when alt is missing', () => {
+        // Append card with image lacking alt attribute
+        const container = document.getElementById('gallery-container');
+        const cardNoAlt = document.createElement('div');
+        cardNoAlt.className = 'project-card';
+        cardNoAlt.innerHTML = `<img class="img-after" src="img_no_alt.jpg">`;
+        container.appendChild(cardNoAlt);
+
+        // Click image without alt
+        const img = cardNoAlt.querySelector('.img-after');
+        const clickEvent = document.createEvent('HTMLEvents');
+        clickEvent.initEvent('click', true, false);
+        img.dispatchEvent(clickEvent);
+
+        const captionText = document.getElementById('caption');
+        expect(captionText.textContent).toBe('Project Image');
+    });
+
+    test('Before/After toggle button correctly toggles image opacities and active class', () => {
+        const container = document.getElementById('gallery-container');
+        const cardBA = document.createElement('div');
+        cardBA.className = 'project-card has-before';
+        cardBA.innerHTML = `
+            <img class="img-after" src="after.jpg" alt="After View">
+            <img class="img-before" src="before.jpg" alt="Before View">
+            <div class="ba-toggle-bar">
+                <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
+                <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
+            </div>
+        `;
+        container.appendChild(cardBA);
+
+        const beforeBtn = cardBA.querySelector('.ba-toggle-btn[data-view="before"]');
+        const afterBtn = cardBA.querySelector('.ba-toggle-btn[data-view="after"]');
+        const imgBefore = cardBA.querySelector('.img-before');
+        const imgAfter = cardBA.querySelector('.img-after');
+
+        // Click "Before" button
+        beforeBtn.click();
+        expect(imgBefore.style.opacity).toBe('1');
+        expect(imgAfter.style.opacity).toBe('0');
+        expect(beforeBtn.classList.contains('active')).toBe(true);
+        expect(afterBtn.classList.contains('active')).toBe(false);
+
+        // Click "After" button
+        afterBtn.click();
+        expect(imgBefore.style.opacity).toBe('0');
+        expect(imgAfter.style.opacity).toBe('1');
+        expect(afterBtn.classList.contains('active')).toBe(true);
+        expect(beforeBtn.classList.contains('active')).toBe(false);
+    });
 });
 
 describe('Hero Carousel Logic', () => {
@@ -334,6 +414,18 @@ describe('initModernGallery & Filter Logic', () => {
 
         // Now shows all 15 items, load more container hidden
         expect(document.querySelectorAll('.project-card').length).toBe(15);
+        expect(loadMoreContainer.style.display).toBe('none');
+    });
+
+    test('initModernGallery displays "No photos found" message when projects array is empty', () => {
+        initModernGallery([]);
+
+        const container = document.getElementById('gallery-container');
+        const emptyMsg = container.querySelector('.no-photos-msg');
+        const loadMoreContainer = document.querySelector('.load-more-container');
+
+        expect(emptyMsg).not.toBeNull();
+        expect(emptyMsg.textContent).toBe('No photos found in this category.');
         expect(loadMoreContainer.style.display).toBe('none');
     });
 });

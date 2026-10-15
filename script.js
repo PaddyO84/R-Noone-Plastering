@@ -1,57 +1,69 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Lightbox State & Elements
+// Lightbox State & Elements cache
+let galleryImages = [];
+let currentIndex = 0;
+
+// Refresh lightbox items based on what's in the DOM (scoped to #gallery-container for performance)
+function refreshLightboxItems() {
+    const container = document.getElementById('gallery-container');
+    if (!container) {
+        galleryImages = [];
+        return;
+    }
+    galleryImages = Array.from(container.querySelectorAll('.project-card .img-after, .project-card .gallery-single-img'));
+}
+
+function openLightbox(index) {
+    if (!galleryImages.length || index < 0 || index >= galleryImages.length) return;
+    currentIndex = index;
+    const img = galleryImages[currentIndex];
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const captionText = document.getElementById('caption');
     const counterText = document.getElementById('lightbox-counter');
+
+    if (lightbox) {
+        lightbox.style.display = 'block';
+        if (lightboxImg) lightboxImg.src = img.src;
+        if (captionText) captionText.textContent = img.alt || "Project Image";
+        if (counterText) counterText.textContent = `${currentIndex + 1} of ${galleryImages.length}`;
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function changeSlide(n) {
+    if (!galleryImages.length) return;
+    let newIndex = currentIndex + n;
+    if (newIndex >= galleryImages.length) {
+        newIndex = 0;
+    } else if (newIndex < 0) {
+        newIndex = galleryImages.length - 1;
+    }
+    openLightbox(newIndex);
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) {
+        lightbox.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// 1. Initialize Lightbox event listeners and controls
+function initLightbox() {
+    const lightbox = document.getElementById('lightbox');
     const closeBtn = document.getElementsByClassName('close')[0];
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
 
-    let galleryImages = [];
-    let currentIndex = 0;
-
-    // Refresh lightbox items based on what's in the DOM
-    function refreshLightboxItems() {
-        galleryImages = Array.from(document.querySelectorAll('.project-card .img-after, .project-card .gallery-single-img'));
-    }
-
-    function openLightbox(index) {
-        if (!galleryImages.length || index < 0 || index >= galleryImages.length) return;
-        currentIndex = index;
-        const img = galleryImages[currentIndex];
-        if (lightbox) {
-            lightbox.style.display = 'block';
-            if (lightboxImg) lightboxImg.src = img.src;
-            if (captionText) captionText.textContent = img.alt || "Project Image";
-            if (counterText) counterText.textContent = `${currentIndex + 1} of ${galleryImages.length}`;
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    function changeSlide(n) {
-        if (!galleryImages.length) return;
-        let newIndex = currentIndex + n;
-        if (newIndex >= galleryImages.length) {
-            newIndex = 0;
-        } else if (newIndex < 0) {
-            newIndex = galleryImages.length - 1;
-        }
-        openLightbox(newIndex);
-    }
-
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            if (lightbox) lightbox.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        });
+        closeBtn.addEventListener('click', closeLightbox);
     }
 
     if (lightbox) {
         lightbox.addEventListener('click', (e) => {
             if (e.target === lightbox) {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = 'auto';
+                closeLightbox();
             }
         });
     }
@@ -59,8 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (lightbox && lightbox.style.display === 'block') {
             if (e.key === 'Escape') {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = 'auto';
+                closeLightbox();
             } else if (e.key === 'ArrowLeft') {
                 changeSlide(-1);
             } else if (e.key === 'ArrowRight') {
@@ -72,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (prevBtn) prevBtn.addEventListener('click', () => changeSlide(-1));
     if (nextBtn) nextBtn.addEventListener('click', () => changeSlide(1));
 
-    // Gallery Delegation
+    // Gallery Delegation for card clicks and before/after toggle buttons
     const galleryContainer = document.getElementById('gallery-container');
     if (galleryContainer) {
         galleryContainer.addEventListener('click', (e) => {
@@ -135,15 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // Initial check for pre-rendered items (e.g. In unit tests)
+    // Initial check for pre-rendered items (e.g. in unit tests)
     refreshLightboxItems();
+}
 
-    // 2. Render Gallery if dynamic data exists
-    if (typeof galleryData !== 'undefined' && galleryData.length > 0) {
-        initModernGallery(galleryData, { onRender: refreshLightboxItems });
-    }
-
-    // 3. Hero Carousel Logic
+// 2. Initialize Hero Carousel
+function initHeroCarousel() {
     const slides = document.querySelectorAll('.hero-slide');
     if (slides.length > 0) {
         let currentSlide = 0;
@@ -155,8 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setInterval(nextSlide, slideInterval);
     }
+}
 
-    // 4. Contact Form Toggle
+// 3. Initialize Contact Form Toggle
+function initContactFormToggle() {
     const toggleBtn = document.getElementById('toggle-form-btn');
     const contactForm = document.getElementById('contact-form');
     if (toggleBtn && contactForm) {
@@ -165,18 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleBtn.style.display = 'none';
         });
     }
-});
+}
 
-// Modern Gallery Grid, Filtering, and Pagination
-function initModernGallery(projects, options = {}) {
-    const container = document.getElementById('gallery-container');
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    const remainingCountSpan = document.getElementById('remaining-count');
-    const filterContainer = document.getElementById('gallery-filters');
-    if (!container) return;
-
-    // Flatten items so every photo is represented cleanly and categorize them
-    let flattenedItems = [];
+// Helper: Flatten projects structure into uniform gallery items & categories
+function flattenGalleryProjects(projects) {
+    const flattenedItems = [];
     const categoriesMap = new Map();
 
     projects.forEach(project => {
@@ -214,13 +217,70 @@ function initModernGallery(projects, options = {}) {
         }
     });
 
-    const parsedCategories = Array.from(categoriesMap.values());
+    return {
+        flattenedItems,
+        categories: Array.from(categoriesMap.values())
+    };
+}
+
+// Helper: Create a project card element
+function createProjectCard(item) {
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    if (item.hasBefore) card.classList.add('has-before');
+
+    // After Image
+    const imgAfter = document.createElement('img');
+    imgAfter.src = item.afterImg;
+    imgAfter.alt = item.title;
+    imgAfter.className = 'img-after';
+    imgAfter.loading = 'lazy';
+    card.appendChild(imgAfter);
+
+    // Before Image if available
+    if (item.hasBefore) {
+        const imgBefore = document.createElement('img');
+        imgBefore.src = item.beforeImg;
+        imgBefore.alt = item.title + " (Before)";
+        imgBefore.className = 'img-before';
+        imgBefore.loading = 'lazy';
+        card.appendChild(imgBefore);
+
+        // Mobile/Touch Friendly Toggle Controls
+        const toggleBar = document.createElement('div');
+        toggleBar.className = 'ba-toggle-bar';
+        toggleBar.innerHTML = `
+            <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
+            <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
+        `;
+        card.appendChild(toggleBar);
+    }
+
+    return card;
+}
+
+// Modern Gallery Grid, Filtering, and Pagination
+function initModernGallery(projects, options = {}) {
+    const container = document.getElementById('gallery-container');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const remainingCountSpan = document.getElementById('remaining-count');
+    const filterContainer = document.getElementById('gallery-filters');
+    if (!container) return;
+
+    const { flattenedItems, categories } = flattenGalleryProjects(projects || []);
+
+    // Build pre-computed Map for O(1) filtering lookup
+    const groupedItemsMap = new Map();
+    groupedItemsMap.set('all', flattenedItems);
+    categories.forEach(cat => {
+        groupedItemsMap.set(cat.id, flattenedItems.filter(item => item.type === cat.id));
+    });
 
     // Dynamic Filter Generation:
     // If only 1 category/project exists, do not display filter buttons at all!
     if (filterContainer) {
         filterContainer.innerHTML = '';
-        if (parsedCategories.length > 1) {
+        if (categories.length > 1) {
             filterContainer.style.display = 'flex';
 
             // "All Photos" button
@@ -230,7 +290,7 @@ function initModernGallery(projects, options = {}) {
             allBtn.textContent = 'All Photos';
             filterContainer.appendChild(allBtn);
 
-            parsedCategories.forEach(cat => {
+            categories.forEach(cat => {
                 const btn = document.createElement('button');
                 btn.className = 'filter-btn';
                 btn.setAttribute('data-filter', cat.id);
@@ -247,60 +307,29 @@ function initModernGallery(projects, options = {}) {
     const batchSize = 12;
     let cachedFilteredItems = flattenedItems;
 
-    function renderItems() {
-        const toShow = cachedFilteredItems.slice(0, visibleCount);
-
-        container.innerHTML = '';
-
-        if (toShow.length === 0) {
-            container.innerHTML = '<p class="no-photos-msg">No photos found in this category.</p>';
-            if (loadMoreBtn) loadMoreBtn.parentElement.style.display = 'none';
-            if (options.onRender) options.onRender();
-            return;
+    function renderItems(isAppend = false) {
+        if (!isAppend) {
+            container.innerHTML = '';
+            if (cachedFilteredItems.length === 0) {
+                container.innerHTML = '<p class="no-photos-msg">No photos found in this category.</p>';
+                if (loadMoreBtn && loadMoreBtn.parentElement) loadMoreBtn.parentElement.style.display = 'none';
+                if (options.onRender) options.onRender();
+                return;
+            }
         }
 
+        const startIndex = isAppend ? visibleCount - batchSize : 0;
+        const toShow = cachedFilteredItems.slice(startIndex, visibleCount);
+
         const fragment = document.createDocumentFragment();
-
-        toShow.forEach((item, index) => {
-            const card = document.createElement('div');
-            card.className = 'project-card';
-            if (item.hasBefore) card.classList.add('has-before');
-
-            // After Image
-            const imgAfter = document.createElement('img');
-            imgAfter.src = item.afterImg;
-            imgAfter.alt = item.title;
-            imgAfter.className = 'img-after';
-            imgAfter.loading = 'lazy';
-            card.appendChild(imgAfter);
-
-            // Before Image if available
-            if (item.hasBefore) {
-                const imgBefore = document.createElement('img');
-                imgBefore.src = item.beforeImg;
-                imgBefore.alt = item.title + " (Before)";
-                imgBefore.className = 'img-before';
-                imgBefore.loading = 'lazy';
-                card.appendChild(imgBefore);
-
-                // Mobile/Touch Friendly Toggle Controls
-                const toggleBar = document.createElement('div');
-                toggleBar.className = 'ba-toggle-bar';
-                toggleBar.innerHTML = `
-                    <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
-                    <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
-                `;
-                card.appendChild(toggleBar);
-            }
-
-            fragment.appendChild(card);
+        toShow.forEach(item => {
+            fragment.appendChild(createProjectCard(item));
         });
-
         container.appendChild(fragment);
 
         // Update Load More button state
         const remaining = cachedFilteredItems.length - visibleCount;
-        if (loadMoreBtn) {
+        if (loadMoreBtn && loadMoreBtn.parentElement) {
             if (remaining > 0) {
                 loadMoreBtn.parentElement.style.display = 'block';
                 if (remainingCountSpan) remainingCountSpan.textContent = remaining;
@@ -323,29 +352,48 @@ function initModernGallery(projects, options = {}) {
                 if (currentActive) currentActive.classList.remove('active');
                 btn.classList.add('active');
                 currentFilter = btn.getAttribute('data-filter');
-                cachedFilteredItems = currentFilter === 'all'
-                    ? flattenedItems
-                    : flattenedItems.filter(item => item.type === currentFilter);
+                cachedFilteredItems = groupedItemsMap.get(currentFilter) || [];
                 visibleCount = 12;
-                renderItems();
+                renderItems(false);
             }
         });
     }
 
-    // Load More Click
+    // Load More Click with incremental rendering
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener('click', () => {
             visibleCount += batchSize;
-            renderItems();
+            renderItems(true);
         });
     }
 
-    renderItems();
+    renderItems(false);
 }
+
+// Orchestrate initialization on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    initLightbox();
+
+    if (typeof galleryData !== 'undefined' && galleryData.length > 0) {
+        initModernGallery(galleryData, { onRender: refreshLightboxItems });
+    }
+
+    initHeroCarousel();
+    initContactFormToggle();
+});
 
 // Export for Jest testing if running in Node environment
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        initModernGallery
+        initModernGallery,
+        initLightbox,
+        initHeroCarousel,
+        initContactFormToggle,
+        flattenGalleryProjects,
+        createProjectCard,
+        refreshLightboxItems,
+        openLightbox,
+        closeLightbox,
+        changeSlide
     };
 }
