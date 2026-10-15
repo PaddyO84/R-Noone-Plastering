@@ -53,6 +53,57 @@ describe('Gallery Lightbox Logic', () => {
         jest.restoreAllMocks();
     });
 
+    test('Lightbox caption falls back to "Project Image" when alt attribute is missing', () => {
+        const container = document.getElementById('gallery-container');
+        container.innerHTML = `
+            <div class="project-card">
+                <img class="img-after" src="no-alt.jpg">
+            </div>
+        `;
+        const clickEvent = document.createEvent('Event');
+        clickEvent.initEvent('DOMContentLoaded', true, true);
+        document.dispatchEvent(clickEvent);
+
+        const img = container.querySelector('.img-after');
+        const event = document.createEvent('HTMLEvents');
+        event.initEvent('click', true, false);
+        img.dispatchEvent(event);
+
+        const caption = document.getElementById('caption');
+        expect(caption.textContent).toBe('Project Image');
+    });
+
+    test('Lightbox closes when close button or background overlay is clicked', () => {
+        const firstCard = document.querySelector('.project-card');
+        const lightbox = document.getElementById('lightbox');
+        const closeBtn = document.querySelector('.close');
+
+        // Open lightbox
+        const img = firstCard.querySelector('.img-after');
+        const clickImg = document.createEvent('HTMLEvents');
+        clickImg.initEvent('click', true, false);
+        img.dispatchEvent(clickImg);
+
+        expect(lightbox.style.display).toBe('block');
+
+        // Click close button
+        closeBtn.click();
+        expect(lightbox.style.display).toBe('none');
+        expect(document.body.style.overflow).toBe('auto');
+
+        // Re-open lightbox
+        img.dispatchEvent(clickImg);
+        expect(lightbox.style.display).toBe('block');
+
+        // Click lightbox overlay (e.target === lightbox)
+        const clickOverlay = document.createEvent('HTMLEvents');
+        clickOverlay.initEvent('click', true, false);
+        lightbox.dispatchEvent(clickOverlay);
+
+        expect(lightbox.style.display).toBe('none');
+        expect(document.body.style.overflow).toBe('auto');
+    });
+
     test('Lightbox opens when a gallery image is clicked', () => {
         const firstCard = document.querySelector('.project-card');
         const lightbox = document.getElementById('lightbox');
@@ -254,11 +305,67 @@ describe('initModernGallery & Filter Logic', () => {
             </div>
         `;
         eval(scriptCode);
+        const event = document.createEvent('Event');
+        event.initEvent('DOMContentLoaded', true, true);
+        document.dispatchEvent(event);
     });
 
     afterEach(() => {
         document.body.innerHTML = '';
         jest.restoreAllMocks();
+    });
+
+    test('initModernGallery renders no photos message when passed an empty array', () => {
+        initModernGallery([]);
+
+        const container = document.getElementById('gallery-container');
+        expect(container.innerHTML).toContain('No photos found in this category.');
+
+        const loadMoreContainer = document.querySelector('.load-more-container');
+        expect(loadMoreContainer.style.display).toBe('none');
+    });
+
+    test('Before/After toggle button clicks toggle image opacities and active classes', () => {
+        const mockProjects = [
+            {
+                id: 'living_room',
+                title: 'Living Room',
+                hasBefore: true,
+                beforeImages: ['before_lr.jpg'],
+                afterImages: ['after_lr.jpg']
+            }
+        ];
+
+        initModernGallery(mockProjects);
+
+        const card = document.querySelector('.project-card');
+        const imgBefore = card.querySelector('.img-before');
+        const imgAfter = card.querySelector('.img-after');
+        const toggleBtnBefore = card.querySelector('.ba-toggle-btn[data-view="before"]');
+        const toggleBtnAfter = card.querySelector('.ba-toggle-btn[data-view="after"]');
+
+        expect(toggleBtnBefore).toBeDefined();
+        expect(toggleBtnAfter).toBeDefined();
+
+        // Simulate click on "Before" toggle button with bubbling enabled
+        const clickBefore = document.createEvent('HTMLEvents');
+        clickBefore.initEvent('click', true, false);
+        toggleBtnBefore.dispatchEvent(clickBefore);
+
+        expect(imgBefore.style.opacity).toBe('1');
+        expect(imgAfter.style.opacity).toBe('0');
+        expect(toggleBtnBefore.classList.contains('active')).toBe(true);
+        expect(toggleBtnAfter.classList.contains('active')).toBe(false);
+
+        // Simulate click on "After" toggle button
+        const clickAfter = document.createEvent('HTMLEvents');
+        clickAfter.initEvent('click', true, false);
+        toggleBtnAfter.dispatchEvent(clickAfter);
+
+        expect(imgBefore.style.opacity).toBe('0');
+        expect(imgAfter.style.opacity).toBe('1');
+        expect(toggleBtnAfter.classList.contains('active')).toBe(true);
+        expect(toggleBtnBefore.classList.contains('active')).toBe(false);
     });
 
     test('initModernGallery renders filter buttons and gallery items', () => {
