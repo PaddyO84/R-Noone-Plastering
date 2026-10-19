@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { initModernGallery } = require('./script.js');
+const { initModernGallery, flattenGalleryProjects, createProjectCard, refreshLightboxItems } = require('./script.js');
 
 describe('Gallery Lightbox Logic', () => {
     let scriptCode;
@@ -427,6 +427,103 @@ describe('initModernGallery & Filter Logic', () => {
         expect(emptyMsg).not.toBeNull();
         expect(emptyMsg.textContent).toBe('No photos found in this category.');
         expect(loadMoreContainer.style.display).toBe('none');
+    });
+});
+
+describe('Standalone Helper Utilities', () => {
+    test('flattenGalleryProjects correctly flattens projects and extracts categories (Item 2)', () => {
+        const inputProjects = [
+            {
+                id: 'living_room',
+                title: 'Living Room',
+                hasBefore: true,
+                beforeImages: ['before1.jpg'],
+                afterImages: ['after1.jpg', 'after2.jpg']
+            },
+            {
+                id: 'general_work',
+                title: 'General Work',
+                hasBefore: false,
+                afterImages: ['gen1.jpg']
+            }
+        ];
+
+        const result = flattenGalleryProjects(inputProjects);
+
+        expect(result.categories).toEqual([
+            { id: 'living_room', title: 'Living Room' },
+            { id: 'general_work', title: 'General Work' }
+        ]);
+
+        expect(result.flattenedItems.length).toBe(3);
+
+        // First item: living_room before/after primary
+        expect(result.flattenedItems[0]).toEqual({
+            type: 'living_room',
+            title: 'Living Room',
+            beforeImg: 'before1.jpg',
+            afterImg: 'after1.jpg',
+            hasBefore: true
+        });
+
+        // Second item: living_room detail image
+        expect(result.flattenedItems[1]).toEqual({
+            type: 'living_room',
+            title: 'Living Room (Detail 2)',
+            afterImg: 'after2.jpg',
+            hasBefore: false
+        });
+
+        // Third item: general_work image
+        expect(result.flattenedItems[2]).toEqual({
+            type: 'general_work',
+            title: 'Plastering Work 1',
+            afterImg: 'gen1.jpg',
+            hasBefore: false
+        });
+    });
+
+    test('createProjectCard generates correct DOM structure for single and before/after cards (Item 3)', () => {
+        // Test single card
+        const singleItem = {
+            title: 'Kitchen Wall',
+            afterImg: 'kitchen.jpg',
+            hasBefore: false
+        };
+        const singleCard = createProjectCard(singleItem);
+        expect(singleCard.className).toBe('project-card');
+        expect(singleCard.querySelector('.img-after')).not.toBeNull();
+        expect(singleCard.querySelector('.img-after').getAttribute('src')).toBe('kitchen.jpg');
+        expect(singleCard.querySelector('.img-after').getAttribute('alt')).toBe('Kitchen Wall');
+        expect(singleCard.querySelector('.img-before')).toBeNull();
+        expect(singleCard.querySelector('.ba-toggle-bar')).toBeNull();
+
+        // Test before/after card
+        const baItem = {
+            title: 'Bathroom Plastering',
+            beforeImg: 'bath_before.jpg',
+            afterImg: 'bath_after.jpg',
+            hasBefore: true
+        };
+        const baCard = createProjectCard(baItem);
+        expect(baCard.classList.contains('has-before')).toBe(true);
+        expect(baCard.querySelector('.img-after')).not.toBeNull();
+        expect(baCard.querySelector('.img-before')).not.toBeNull();
+        expect(baCard.querySelector('.img-before').getAttribute('src')).toBe('bath_before.jpg');
+
+        const toggleBar = baCard.querySelector('.ba-toggle-bar');
+        expect(toggleBar).not.toBeNull();
+        const toggleBtns = toggleBar.querySelectorAll('.ba-toggle-btn');
+        expect(toggleBtns.length).toBe(2);
+        expect(toggleBtns[0].getAttribute('data-view')).toBe('after');
+        expect(toggleBtns[1].getAttribute('data-view')).toBe('before');
+    });
+
+    test('refreshLightboxItems gracefully handles missing gallery container without throwing (Item 4)', () => {
+        document.body.innerHTML = ''; // No #gallery-container present
+        expect(() => {
+            refreshLightboxItems();
+        }).not.toThrow();
     });
 });
 
