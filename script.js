@@ -10,6 +10,9 @@ function refreshLightboxItems() {
         return;
     }
     galleryImages = Array.from(container.querySelectorAll('.project-card .img-after, .project-card .gallery-single-img'));
+    galleryImages.forEach((img, idx) => {
+        img.dataset.index = idx;
+    });
 }
 
 function openLightbox(index) {
@@ -116,12 +119,12 @@ function initLightbox() {
                 }
 
                 const activeImg = card.querySelector('.img-after') || card.querySelector('img');
-                let index = galleryImages.indexOf(activeImg);
-                if (index === -1) {
+                let index = activeImg && activeImg.dataset.index !== undefined ? parseInt(activeImg.dataset.index, 10) : -1;
+                if (isNaN(index) || index === -1) {
                     refreshLightboxItems();
-                    index = galleryImages.indexOf(activeImg);
+                    index = activeImg && activeImg.dataset.index !== undefined ? parseInt(activeImg.dataset.index, 10) : galleryImages.indexOf(activeImg);
                 }
-                if (index !== -1) {
+                if (index !== -1 && !isNaN(index)) {
                     openLightbox(index);
                 }
             }
@@ -223,6 +226,53 @@ function flattenGalleryProjects(projects) {
     };
 }
 
+// Helper: Setup filter buttons in the container
+function setupFilterButtons(filterContainer, categories, onSelectFilter) {
+    filterContainer.replaceChildren();
+    if (categories.length > 1) {
+        filterContainer.style.display = 'flex';
+
+        // "All Photos" button
+        const allBtn = document.createElement('button');
+        allBtn.className = 'filter-btn active';
+        allBtn.setAttribute('data-filter', 'all');
+        allBtn.textContent = 'All Photos';
+        filterContainer.appendChild(allBtn);
+
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.setAttribute('data-filter', cat.id);
+            btn.textContent = cat.title;
+            filterContainer.appendChild(btn);
+        });
+
+        filterContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-btn');
+            if (btn) {
+                const currentActive = filterContainer.querySelector('.filter-btn.active');
+                if (currentActive) currentActive.classList.remove('active');
+                btn.classList.add('active');
+                onSelectFilter(btn.getAttribute('data-filter'));
+            }
+        });
+    } else {
+        filterContainer.style.display = 'none';
+    }
+}
+
+// Helper: Update Load More button container visibility and remaining count
+function updateLoadMoreState(loadMoreBtn, remainingCountSpan, remaining) {
+    if (loadMoreBtn && loadMoreBtn.parentElement) {
+        if (remaining > 0) {
+            loadMoreBtn.parentElement.style.display = 'block';
+            if (remainingCountSpan) remainingCountSpan.textContent = remaining;
+        } else {
+            loadMoreBtn.parentElement.style.display = 'none';
+        }
+    }
+}
+
 // Helper: Create a project card element
 function createProjectCard(item) {
     const card = document.createElement('div');
@@ -249,10 +299,21 @@ function createProjectCard(item) {
         // Mobile/Touch Friendly Toggle Controls
         const toggleBar = document.createElement('div');
         toggleBar.className = 'ba-toggle-bar';
-        toggleBar.innerHTML = `
-            <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
-            <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
-        `;
+
+        const btnAfter = document.createElement('button');
+        btnAfter.type = 'button';
+        btnAfter.className = 'ba-toggle-btn active';
+        btnAfter.setAttribute('data-view', 'after');
+        btnAfter.textContent = 'After';
+
+        const btnBefore = document.createElement('button');
+        btnBefore.type = 'button';
+        btnBefore.className = 'ba-toggle-btn';
+        btnBefore.setAttribute('data-view', 'before');
+        btnBefore.textContent = 'Before';
+
+        toggleBar.appendChild(btnAfter);
+        toggleBar.appendChild(btnBefore);
         card.appendChild(toggleBar);
     }
 
@@ -276,32 +337,6 @@ function initModernGallery(projects, options = {}) {
         groupedItemsMap.set(cat.id, flattenedItems.filter(item => item.type === cat.id));
     });
 
-    // Dynamic Filter Generation:
-    // If only 1 category/project exists, do not display filter buttons at all!
-    if (filterContainer) {
-        filterContainer.innerHTML = '';
-        if (categories.length > 1) {
-            filterContainer.style.display = 'flex';
-
-            // "All Photos" button
-            const allBtn = document.createElement('button');
-            allBtn.className = 'filter-btn active';
-            allBtn.setAttribute('data-filter', 'all');
-            allBtn.textContent = 'All Photos';
-            filterContainer.appendChild(allBtn);
-
-            categories.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn';
-                btn.setAttribute('data-filter', cat.id);
-                btn.textContent = cat.title;
-                filterContainer.appendChild(btn);
-            });
-        } else {
-            filterContainer.style.display = 'none';
-        }
-    }
-
     let currentFilter = 'all';
     let visibleCount = 12;
     const batchSize = 12;
@@ -309,10 +344,13 @@ function initModernGallery(projects, options = {}) {
 
     function renderItems(isAppend = false) {
         if (!isAppend) {
-            container.innerHTML = '';
+            container.replaceChildren();
             if (cachedFilteredItems.length === 0) {
-                container.innerHTML = '<p class="no-photos-msg">No photos found in this category.</p>';
-                if (loadMoreBtn && loadMoreBtn.parentElement) loadMoreBtn.parentElement.style.display = 'none';
+                const noPhotosP = document.createElement('p');
+                noPhotosP.className = 'no-photos-msg';
+                noPhotosP.textContent = 'No photos found in this category.';
+                container.appendChild(noPhotosP);
+                updateLoadMoreState(loadMoreBtn, remainingCountSpan, 0);
                 if (options.onRender) options.onRender();
                 return;
             }
@@ -327,35 +365,21 @@ function initModernGallery(projects, options = {}) {
         });
         container.appendChild(fragment);
 
-        // Update Load More button state
         const remaining = cachedFilteredItems.length - visibleCount;
-        if (loadMoreBtn && loadMoreBtn.parentElement) {
-            if (remaining > 0) {
-                loadMoreBtn.parentElement.style.display = 'block';
-                if (remainingCountSpan) remainingCountSpan.textContent = remaining;
-            } else {
-                loadMoreBtn.parentElement.style.display = 'none';
-            }
-        }
+        updateLoadMoreState(loadMoreBtn, remainingCountSpan, remaining);
 
         if (options.onRender) {
             options.onRender();
         }
     }
 
-    // Attach listener to filterContainer using event delegation
+    // Setup filter controls
     if (filterContainer) {
-        filterContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('.filter-btn');
-            if (btn) {
-                const currentActive = filterContainer.querySelector('.filter-btn.active');
-                if (currentActive) currentActive.classList.remove('active');
-                btn.classList.add('active');
-                currentFilter = btn.getAttribute('data-filter');
-                cachedFilteredItems = groupedItemsMap.get(currentFilter) || [];
-                visibleCount = 12;
-                renderItems(false);
-            }
+        setupFilterButtons(filterContainer, categories, (filterId) => {
+            currentFilter = filterId;
+            cachedFilteredItems = groupedItemsMap.get(currentFilter) || [];
+            visibleCount = 12;
+            renderItems(false);
         });
     }
 
