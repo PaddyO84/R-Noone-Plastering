@@ -4,6 +4,15 @@ import json
 DEFAULT_PROJECTS_DIR = "images/projects"
 DEFAULT_OUTPUT_FILE = "gallery_data.js"
 
+def get_sorted_images(folder_path):
+    if not os.path.exists(folder_path):
+        return []
+    valid_exts = ('.jpg', '.jpeg', '.png', '.webp')
+    with os.scandir(folder_path) as entries:
+        images = [e.name for e in entries if e.is_file() and e.name.lower().endswith(valid_exts)]
+    images.sort()
+    return [os.path.join(folder_path, img) for img in images]
+
 def generate_gallery_data(projects_dir=DEFAULT_PROJECTS_DIR, output_file=DEFAULT_OUTPUT_FILE):
     projects = []
 
@@ -12,7 +21,8 @@ def generate_gallery_data(projects_dir=DEFAULT_PROJECTS_DIR, output_file=DEFAULT
         return
 
     # List directories in projects_dir
-    project_folders = [f for f in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, f))]
+    with os.scandir(projects_dir) as entries:
+        project_folders = [e.name for e in entries if e.is_dir()]
     project_folders.sort()
 
     for folder in project_folders:
@@ -29,18 +39,12 @@ def generate_gallery_data(projects_dir=DEFAULT_PROJECTS_DIR, output_file=DEFAULT
         }
 
         # Get After Images
-        if os.path.exists(after_path):
-            images = [f for f in os.listdir(after_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
-            images.sort()
-            project_data["afterImages"] = [os.path.join(after_path, img) for img in images]
+        project_data["afterImages"] = get_sorted_images(after_path)
 
         # Get Before Images
-        if os.path.exists(before_path):
-            images = [f for f in os.listdir(before_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
-            images.sort()
-            project_data["beforeImages"] = [os.path.join(before_path, img) for img in images]
-            if project_data["beforeImages"]:
-                project_data["hasBefore"] = True
+        project_data["beforeImages"] = get_sorted_images(before_path)
+        if project_data["beforeImages"]:
+            project_data["hasBefore"] = True
 
         # Only add if there are after images
         if project_data["afterImages"]:

@@ -4,7 +4,14 @@
 
 const fs = require('fs');
 const path = require('path');
-const { initModernGallery } = require('./script.js');
+const {
+    initModernGallery,
+    flattenGalleryProjects,
+    createProjectCard,
+    refreshLightboxItems,
+    initHeroCarousel,
+    initContactFormToggle
+} = require('./script.js');
 
 describe('Gallery Lightbox Logic', () => {
     let scriptCode;
@@ -316,6 +323,38 @@ describe('Hero Carousel Logic', () => {
         expect(slides[2].classList.contains('active')).toBe(false);
         expect(slides[0].classList.contains('active')).toBe(true);
     });
+
+    test('nextSlide pauses and does not rotate slide when document is hidden', () => {
+        const slides = document.querySelectorAll('.hero-slide');
+        expect(slides[0].classList.contains('active')).toBe(true);
+
+        // Mock document.hidden = true
+        Object.defineProperty(document, 'hidden', {
+            configurable: true,
+            get: () => true
+        });
+
+        jest.advanceTimersByTime(5000);
+        // Slide should remain active at slide 0
+        expect(slides[0].classList.contains('active')).toBe(true);
+        expect(slides[1].classList.contains('active')).toBe(false);
+
+        // Reset document.hidden = false
+        Object.defineProperty(document, 'hidden', {
+            configurable: true,
+            get: () => false
+        });
+
+        jest.advanceTimersByTime(5000);
+        // Now rotates to slide 1
+        expect(slides[0].classList.contains('active')).toBe(false);
+        expect(slides[1].classList.contains('active')).toBe(true);
+    });
+
+    test('initHeroCarousel handles empty DOM gracefully', () => {
+        document.body.innerHTML = '';
+        expect(() => initHeroCarousel()).not.toThrow();
+    });
 });
 
 describe('initModernGallery & Filter Logic', () => {
@@ -465,4 +504,175 @@ describe('Contact Form Toggle', () => {
         expect(contactForm.classList.contains('hidden')).toBe(false);
         expect(toggleBtn.style.display).toBe('none');
     });
+
+    test('initContactFormToggle handles missing elements gracefully', () => {
+        document.body.innerHTML = '';
+        expect(() => initContactFormToggle()).not.toThrow();
+
+        document.body.innerHTML = '<button id="toggle-form-btn">Contact Us</button>';
+        expect(() => initContactFormToggle()).not.toThrow();
+    });
 });
+
+describe('flattenGalleryProjects Helper', () => {
+    test('returns empty flattenedItems and categories for empty input', () => {
+        const result = flattenGalleryProjects([]);
+        expect(result).toEqual({ flattenedItems: [], categories: [] });
+    });
+
+    test('flattens project with before and after images', () => {
+        const projects = [
+            {
+                id: 'living_room',
+                title: 'Living Room',
+                hasBefore: true,
+                beforeImages: ['before_lr.jpg'],
+                afterImages: ['after_lr1.jpg', 'after_lr2.jpg']
+            }
+        ];
+
+        const { flattenedItems, categories } = flattenGalleryProjects(projects);
+
+        expect(categories).toEqual([{ id: 'living_room', title: 'Living Room' }]);
+        expect(flattenedItems.length).toBe(2);
+
+        // Primary item with before & after
+        expect(flattenedItems[0]).toEqual({
+            type: 'living_room',
+            title: 'Living Room',
+            beforeImg: 'before_lr.jpg',
+            afterImg: 'after_lr1.jpg',
+            hasBefore: true
+        });
+
+        // Detail item with after only
+        expect(flattenedItems[1]).toEqual({
+            type: 'living_room',
+            title: 'Living Room (Detail 2)',
+            afterImg: 'after_lr2.jpg',
+            hasBefore: false
+        });
+    });
+
+    test('flattens project with after images only', () => {
+        const projects = [
+            {
+                id: 'bathrooms',
+                title: 'Bathrooms',
+                hasBefore: false,
+                afterImages: ['bath1.jpg', 'bath2.jpg']
+            }
+        ];
+
+        const { flattenedItems, categories } = flattenGalleryProjects(projects);
+
+        expect(categories).toEqual([{ id: 'bathrooms', title: 'Bathrooms' }]);
+        expect(flattenedItems.length).toBe(2);
+        expect(flattenedItems[0].title).toBe('Bathrooms');
+        expect(flattenedItems[1].title).toBe('Bathrooms');
+    });
+
+    test('formats general_work titles as "Plastering Work X"', () => {
+        const projects = [
+            {
+                id: 'general_work',
+                title: 'General Work',
+                hasBefore: false,
+                afterImages: ['gw1.jpg', 'gw2.jpg']
+            }
+        ];
+
+        const { flattenedItems } = flattenGalleryProjects(projects);
+        expect(flattenedItems[0].title).toBe('Plastering Work 1');
+        expect(flattenedItems[1].title).toBe('Plastering Work 2');
+    });
+});
+
+describe('createProjectCard Helper', () => {
+    test('creates standard card for item without before image', () => {
+        const item = {
+            title: 'Kitchen Renovation',
+            afterImg: 'kitchen.jpg',
+            hasBefore: false
+        };
+
+        const card = createProjectCard(item);
+
+        expect(card.className).toBe('project-card');
+        expect(card.classList.contains('has-before')).toBe(false);
+
+        const imgAfter = card.querySelector('.img-after');
+        expect(imgAfter).not.toBeNull();
+        expect(imgAfter.src).toContain('kitchen.jpg');
+        expect(imgAfter.alt).toBe('Kitchen Renovation');
+        expect(imgAfter.loading).toBe('lazy');
+
+        expect(card.querySelector('.img-before')).toBeNull();
+        expect(card.querySelector('.ba-toggle-bar')).toBeNull();
+    });
+
+    test('creates before/after card with toggle controls when hasBefore is true', () => {
+        const item = {
+            title: 'Living Room',
+            beforeImg: 'lr_before.jpg',
+            afterImg: 'lr_after.jpg',
+            hasBefore: true
+        };
+
+        const card = createProjectCard(item);
+
+        expect(card.classList.contains('has-before')).toBe(true);
+
+        const imgAfter = card.querySelector('.img-after');
+        const imgBefore = card.querySelector('.img-before');
+        expect(imgAfter).not.toBeNull();
+        expect(imgBefore).not.toBeNull();
+        expect(imgBefore.alt).toBe('Living Room (Before)');
+
+        const toggleBar = card.querySelector('.ba-toggle-bar');
+        expect(toggleBar).not.toBeNull();
+
+        const buttons = toggleBar.querySelectorAll('button');
+        expect(buttons.length).toBe(2);
+        expect(buttons[0].getAttribute('data-view')).toBe('after');
+        expect(buttons[0].classList.contains('active')).toBe(true);
+        expect(buttons[0].textContent).toBe('After');
+
+        expect(buttons[1].getAttribute('data-view')).toBe('before');
+        expect(buttons[1].classList.contains('active')).toBe(false);
+        expect(buttons[1].textContent).toBe('Before');
+    });
+});
+
+describe('refreshLightboxItems Helper', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    test('resets galleryImages when #gallery-container is missing', () => {
+        refreshLightboxItems();
+        expect(document.getElementById('gallery-container')).toBeNull();
+    });
+
+    test('collects all gallery images from #gallery-container', () => {
+        document.body.innerHTML = `
+            <div id="gallery-container">
+                <div class="project-card">
+                    <img class="img-after" src="img1.jpg" alt="Img 1">
+                </div>
+                <div class="project-card">
+                    <img class="gallery-single-img" src="img2.jpg" alt="Img 2">
+                </div>
+                <div class="unrelated-card">
+                    <img class="other-img" src="ignored.jpg" alt="Ignored">
+                </div>
+            </div>
+        `;
+
+        refreshLightboxItems();
+        const container = document.getElementById('gallery-container');
+        const expectedImgs = container.querySelectorAll('.project-card .img-after, .project-card .gallery-single-img');
+        expect(expectedImgs.length).toBe(2);
+    });
+});
+

@@ -157,6 +157,7 @@ function initHeroCarousel() {
         let currentSlide = 0;
         const slideInterval = 5000;
         function nextSlide() {
+            if (document.hidden) return;
             slides[currentSlide].classList.remove('active');
             currentSlide = (currentSlide + 1) % slides.length;
             slides[currentSlide].classList.add('active');
@@ -249,14 +250,101 @@ function createProjectCard(item) {
         // Mobile/Touch Friendly Toggle Controls
         const toggleBar = document.createElement('div');
         toggleBar.className = 'ba-toggle-bar';
-        toggleBar.innerHTML = `
-            <button type="button" class="ba-toggle-btn active" data-view="after">After</button>
-            <button type="button" class="ba-toggle-btn" data-view="before">Before</button>
-        `;
+
+        const afterBtn = document.createElement('button');
+        afterBtn.type = 'button';
+        afterBtn.className = 'ba-toggle-btn active';
+        afterBtn.setAttribute('data-view', 'after');
+        afterBtn.textContent = 'After';
+
+        const beforeBtn = document.createElement('button');
+        beforeBtn.type = 'button';
+        beforeBtn.className = 'ba-toggle-btn';
+        beforeBtn.setAttribute('data-view', 'before');
+        beforeBtn.textContent = 'Before';
+
+        toggleBar.appendChild(afterBtn);
+        toggleBar.appendChild(beforeBtn);
         card.appendChild(toggleBar);
     }
 
     return card;
+}
+
+// Helper: Render a batch of gallery cards into container
+function renderGalleryBatch({ container, items, visibleCount, batchSize, isAppend, loadMoreBtn, remainingCountSpan, onRender }) {
+    if (!isAppend) {
+        container.textContent = '';
+        if (items.length === 0) {
+            const noPhotosMsg = document.createElement('p');
+            noPhotosMsg.className = 'no-photos-msg';
+            noPhotosMsg.textContent = 'No photos found in this category.';
+            container.appendChild(noPhotosMsg);
+            if (loadMoreBtn && loadMoreBtn.parentElement) loadMoreBtn.parentElement.style.display = 'none';
+            if (onRender) onRender();
+            return;
+        }
+    }
+
+    const startIndex = isAppend ? visibleCount - batchSize : 0;
+    const toShow = items.slice(startIndex, visibleCount);
+
+    const fragment = document.createDocumentFragment();
+    toShow.forEach(item => {
+        fragment.appendChild(createProjectCard(item));
+    });
+    container.appendChild(fragment);
+
+    // Update Load More button state
+    const remaining = items.length - visibleCount;
+    if (loadMoreBtn && loadMoreBtn.parentElement) {
+        if (remaining > 0) {
+            loadMoreBtn.parentElement.style.display = 'block';
+            if (remainingCountSpan) remainingCountSpan.textContent = remaining;
+        } else {
+            loadMoreBtn.parentElement.style.display = 'none';
+        }
+    }
+
+    if (onRender) {
+        onRender();
+    }
+}
+
+// Helper: Setup category filter buttons and click event delegation
+function setupGalleryFilters(filterContainer, categories, onFilterSelect) {
+    filterContainer.textContent = '';
+    if (categories.length > 1) {
+        filterContainer.style.display = 'flex';
+
+        // "All Photos" button
+        const allBtn = document.createElement('button');
+        allBtn.className = 'filter-btn active';
+        allBtn.setAttribute('data-filter', 'all');
+        allBtn.textContent = 'All Photos';
+        filterContainer.appendChild(allBtn);
+
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.setAttribute('data-filter', cat.id);
+            btn.textContent = cat.title;
+            filterContainer.appendChild(btn);
+        });
+
+        filterContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-btn');
+            if (btn) {
+                const currentActive = filterContainer.querySelector('.filter-btn.active');
+                if (currentActive) currentActive.classList.remove('active');
+                btn.classList.add('active');
+                const filterId = btn.getAttribute('data-filter');
+                onFilterSelect(filterId);
+            }
+        });
+    } else {
+        filterContainer.style.display = 'none';
+    }
 }
 
 // Modern Gallery Grid, Filtering, and Pagination
@@ -269,105 +357,51 @@ function initModernGallery(projects, options = {}) {
 
     const { flattenedItems, categories } = flattenGalleryProjects(projects || []);
 
-    // Build pre-computed Map for O(1) filtering lookup
+    // Build pre-computed Map for O(1) filtering lookup using a single pass (O(N))
     const groupedItemsMap = new Map();
     groupedItemsMap.set('all', flattenedItems);
-    categories.forEach(cat => {
-        groupedItemsMap.set(cat.id, flattenedItems.filter(item => item.type === cat.id));
+    categories.forEach(cat => groupedItemsMap.set(cat.id, []));
+    flattenedItems.forEach(item => {
+        const group = groupedItemsMap.get(item.type);
+        if (group) group.push(item);
     });
-
-    // Dynamic Filter Generation:
-    // If only 1 category/project exists, do not display filter buttons at all!
-    if (filterContainer) {
-        filterContainer.innerHTML = '';
-        if (categories.length > 1) {
-            filterContainer.style.display = 'flex';
-
-            // "All Photos" button
-            const allBtn = document.createElement('button');
-            allBtn.className = 'filter-btn active';
-            allBtn.setAttribute('data-filter', 'all');
-            allBtn.textContent = 'All Photos';
-            filterContainer.appendChild(allBtn);
-
-            categories.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn';
-                btn.setAttribute('data-filter', cat.id);
-                btn.textContent = cat.title;
-                filterContainer.appendChild(btn);
-            });
-        } else {
-            filterContainer.style.display = 'none';
-        }
-    }
 
     let currentFilter = 'all';
     let visibleCount = 12;
     const batchSize = 12;
     let cachedFilteredItems = flattenedItems;
 
-    function renderItems(isAppend = false) {
-        if (!isAppend) {
-            container.innerHTML = '';
-            if (cachedFilteredItems.length === 0) {
-                container.innerHTML = '<p class="no-photos-msg">No photos found in this category.</p>';
-                if (loadMoreBtn && loadMoreBtn.parentElement) loadMoreBtn.parentElement.style.display = 'none';
-                if (options.onRender) options.onRender();
-                return;
-            }
-        }
-
-        const startIndex = isAppend ? visibleCount - batchSize : 0;
-        const toShow = cachedFilteredItems.slice(startIndex, visibleCount);
-
-        const fragment = document.createDocumentFragment();
-        toShow.forEach(item => {
-            fragment.appendChild(createProjectCard(item));
+    function render(isAppend = false) {
+        renderGalleryBatch({
+            container,
+            items: cachedFilteredItems,
+            visibleCount,
+            batchSize,
+            isAppend,
+            loadMoreBtn,
+            remainingCountSpan,
+            onRender: options.onRender
         });
-        container.appendChild(fragment);
-
-        // Update Load More button state
-        const remaining = cachedFilteredItems.length - visibleCount;
-        if (loadMoreBtn && loadMoreBtn.parentElement) {
-            if (remaining > 0) {
-                loadMoreBtn.parentElement.style.display = 'block';
-                if (remainingCountSpan) remainingCountSpan.textContent = remaining;
-            } else {
-                loadMoreBtn.parentElement.style.display = 'none';
-            }
-        }
-
-        if (options.onRender) {
-            options.onRender();
-        }
     }
 
-    // Attach listener to filterContainer using event delegation
     if (filterContainer) {
-        filterContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('.filter-btn');
-            if (btn) {
-                const currentActive = filterContainer.querySelector('.filter-btn.active');
-                if (currentActive) currentActive.classList.remove('active');
-                btn.classList.add('active');
-                currentFilter = btn.getAttribute('data-filter');
-                cachedFilteredItems = groupedItemsMap.get(currentFilter) || [];
-                visibleCount = 12;
-                renderItems(false);
-            }
+        setupGalleryFilters(filterContainer, categories, (filterId) => {
+            currentFilter = filterId;
+            cachedFilteredItems = groupedItemsMap.get(currentFilter) || [];
+            visibleCount = batchSize;
+            render(false);
         });
     }
 
     // Load More Click with incremental rendering
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', () => {
+        loadMoreBtn.onclick = () => {
             visibleCount += batchSize;
-            renderItems(true);
-        });
+            render(true);
+        };
     }
 
-    renderItems(false);
+    render(false);
 }
 
 // Orchestrate initialization on DOMContentLoaded
@@ -386,6 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         initModernGallery,
+        setupGalleryFilters,
+        renderGalleryBatch,
         initLightbox,
         initHeroCarousel,
         initContactFormToggle,
